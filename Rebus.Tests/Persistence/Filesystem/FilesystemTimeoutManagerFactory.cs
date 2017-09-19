@@ -2,6 +2,7 @@
 using System.IO;
 using Rebus.Logging;
 using Rebus.Persistence.FileSystem;
+using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Timeouts;
 using Rebus.Tests.Contracts.Utilities;
 using Rebus.Timeouts;
@@ -10,7 +11,7 @@ namespace Rebus.Tests.Persistence.Filesystem
 {
     public class FilesystemTimeoutManagerFactory : ITimeoutManagerFactory
     {
-        readonly string _basePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"Timeouts{DateTime.Now:yyyyMMddHHmmssffff}");
+        readonly string _basePath = Path.Combine(TestConfig.DirectoryPath(), $"Timeouts{DateTime.Now:yyyyMMddHHmmssffff}");
 
         public ITimeoutManager Create()
         {

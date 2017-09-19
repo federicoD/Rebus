@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Rebus.Bus;
 using Rebus.Config;
+using Rebus.Exceptions;
 using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.Messages;
+using Rebus.Persistence.Throwing;
 using Rebus.Threading;
 using Rebus.Timeouts;
 using Rebus.Transport;
@@ -65,11 +67,16 @@ This is done by checking if the incoming message has a '" + Headers.DeferredUnti
             if (UsingExternalTimeoutManager)
             {
                 _log.Info("Using external timeout manager with this address: {queueName}", _options.ExternalTimeoutManagerAddressOrNull);
+                return;
             }
-            else
+
+            // ATM this is the best way to detect that the timeout manager is disabled and we therefore should not start the background task that polls for due messages
+            if (_timeoutManager is DisabledTimeoutManager)
             {
-                _dueMessagesSenderBackgroundTask.Start();
+                return;
             }
+
+            _dueMessagesSenderBackgroundTask.Start();
         }
 
         bool UsingExternalTimeoutManager => !string.IsNullOrWhiteSpace(_options.ExternalTimeoutManagerAddressOrNull);
@@ -122,7 +129,7 @@ This is done by checking if the incoming message has a '" + Headers.DeferredUnti
             {
                 if (!headers.ContainsKey(Headers.DeferredRecipient))
                 {
-                    throw new ApplicationException(
+                    throw new RebusApplicationException(
                         $"Received message {headers[Headers.MessageId]} with the '{Headers.DeferredUntil}' header" +
                         $" set to '{headers[Headers.DeferredUntil]}', but the message had no" +
                         $" '{Headers.DeferredRecipient}' header!");

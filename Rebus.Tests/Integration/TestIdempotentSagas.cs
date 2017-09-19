@@ -11,11 +11,11 @@ using Rebus.Config;
 using Rebus.Handlers;
 using Rebus.Logging;
 using Rebus.Messages;
+using Rebus.Persistence.InMem;
 using Rebus.Sagas;
 using Rebus.Sagas.Idempotent;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
-using Rebus.Tests.Extensions;
 using Rebus.Transport;
 using Rebus.Transport.InMem;
 #pragma warning disable 1998
@@ -56,6 +56,8 @@ namespace Rebus.Tests.Integration
 
                         return new SagaStorageTap(sagaStorage, _persistentSagaData);
                     });
+
+                    s.StoreInMemory();
                 })
                 .Options(o =>
                 {

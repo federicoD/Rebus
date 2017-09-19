@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Rebus.Bus;
+using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Retry.Simple;
@@ -24,12 +25,9 @@ namespace Rebus.Retry.PoisonQueues
         /// </summary>
         public PoisonQueueErrorHandler(SimpleRetryStrategySettings simpleRetryStrategySettings, ITransport transport, IRebusLoggerFactory rebusLoggerFactory)
         {
-            if (simpleRetryStrategySettings == null) throw new ArgumentNullException(nameof(simpleRetryStrategySettings));
-            if (transport == null) throw new ArgumentNullException(nameof(transport));
-            if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
-            _simpleRetryStrategySettings = simpleRetryStrategySettings;
-            _transport = transport;
-            _log = rebusLoggerFactory.GetLogger<PoisonQueueErrorHandler>();
+            _log = rebusLoggerFactory?.GetLogger<PoisonQueueErrorHandler>() ?? throw new ArgumentNullException(nameof(rebusLoggerFactory));
+            _transport = transport ?? throw new ArgumentNullException(nameof(transport));
+            _simpleRetryStrategySettings = simpleRetryStrategySettings ?? throw new ArgumentNullException(nameof(simpleRetryStrategySettings));
         }
 
         /// <summary>
@@ -37,13 +35,15 @@ namespace Rebus.Retry.PoisonQueues
         /// </summary>
         public void Initialize()
         {
-            _transport.CreateQueue(_simpleRetryStrategySettings.ErrorQueueAddress);
+            var errorQueueAddress = _simpleRetryStrategySettings.ErrorQueueAddress;
+
+            _transport.CreateQueue(errorQueueAddress);
         }
 
         /// <summary>
         /// Handles the poisonous message by forwarding it to the configured error queue
         /// </summary>
-        public async Task HandlePoisonMessage(TransportMessage transportMessage, ITransactionContext transactionContext, string errorDescription)
+        public async Task HandlePoisonMessage(TransportMessage transportMessage, ITransactionContext transactionContext, Exception exception)
         {
             var headers = transportMessage.Headers;
 
@@ -54,25 +54,41 @@ namespace Rebus.Retry.PoisonQueues
                 messageId = "<unknown>";
             }
 
-            headers[Headers.ErrorDetails] = errorDescription;
+            headers[Headers.ErrorDetails] = GetErrorDetails(exception);
             headers[Headers.SourceQueue] = _transport.Address;
 
             var errorQueueAddress = _simpleRetryStrategySettings.ErrorQueueAddress;
 
             try
             {
-                _log.Error("Moving message with ID {messageId} to error queue {queueName} - reason: {errorDetails}", messageId, errorQueueAddress, errorDescription);
+                _log.Error(exception, "Moving message with ID {messageId} to error queue {queueName}", messageId, errorQueueAddress);
 
                 await _transport.Send(errorQueueAddress, transportMessage, transactionContext);
             }
-            catch (Exception exception)
+            catch (Exception forwardException)
             {
-                _log.Error(exception, "Could not move message with ID {messageId} to error queue {queueName} - will pause {pauseInterval} to avoid thrashing",
+                _log.Error(forwardException, "Could not move message with ID {messageId} to error queue {queueName} - will pause {pauseInterval} to avoid thrashing",
                     messageId, errorQueueAddress, MoveToErrorQueueFailedPause);
 
                 // if we can't move to error queue, we need to avoid thrashing over and over
                 await Task.Delay(MoveToErrorQueueFailedPause);
             }
         }
+
+        string GetErrorDetails(Exception exception)
+        {
+            var maxLength = _simpleRetryStrategySettings.ErrorDetailsHeaderMaxLength;
+
+            // if there's not even room for the placeholder, just cut the crap
+            if (maxLength < 5)
+            {
+                return "";
+            }
+
+            var errorDetails = exception.ToString().Truncate(maxLength);
+
+            return errorDetails;
+        }
+
     }
 }

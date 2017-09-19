@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
+using System.Reflection;
 
 namespace Rebus.Extensions
 {
@@ -18,10 +20,10 @@ namespace Rebus.Extensions
                 yield return implementedInterface;
             }
 
-            while (type.BaseType != null)
+            while (type.GetTypeInfo().BaseType != null)
             {
-                yield return type.BaseType;
-                type = type.BaseType;
+                yield return type.GetTypeInfo().BaseType;
+                type = type.GetTypeInfo().BaseType;
             }
         }
 
@@ -31,7 +33,70 @@ namespace Rebus.Extensions
         /// </summary>
         public static string GetSimpleAssemblyQualifiedName(this Type type)
         {
-            return $"{type.FullName}, {type.Assembly.GetName().Name}";
+            if (type == null) throw new ArgumentNullException(nameof(type));
+            return BuildSimpleAssemblyQualifiedName(type, new StringBuilder()).ToString();
+        }
+
+        static StringBuilder BuildSimpleAssemblyQualifiedName(Type type, StringBuilder sb)
+        {
+#if NETSTANDARD1_3
+            var typeInfo = type.GetTypeInfo();
+            if (!typeInfo.IsGenericType)
+            {
+                sb.Append($"{type.FullName}, {typeInfo.Assembly.GetName().Name}");
+                return sb;
+            }
+
+            if (!type.IsConstructedGenericType)
+            {
+                return sb;
+            }
+
+            var fullName = type.FullName;
+            var requiredPosition = fullName.IndexOf("[", StringComparison.Ordinal);
+            var name = fullName.Substring(0, requiredPosition);
+            sb.Append($"{name}[");
+
+            var arguments = type.GetGenericArguments();
+            for (var i = 0; i < arguments.Length; i++)
+            {
+                sb.Append(i == 0 ? "[" : ", [");
+                BuildSimpleAssemblyQualifiedName(arguments[i], sb);
+                sb.Append("]");
+            }
+
+            sb.Append($"], {typeInfo.Assembly.GetName().Name}");
+
+            return sb;
+#else
+            if (!type.IsGenericType)
+            {
+                sb.Append($"{type.FullName}, {type.Assembly.GetName().Name}");
+                return sb;
+            }
+
+            if (!type.IsConstructedGenericType)
+            {
+                return sb;
+            }
+
+            var fullName = type.FullName;
+            var requiredPosition = fullName.IndexOf("[", StringComparison.Ordinal);
+            var name = fullName.Substring(0, requiredPosition);     
+            sb.Append($"{name}[");
+
+            var arguments = type.GetGenericArguments();
+            for (var i = 0; i < arguments.Length; i++)
+            {
+                sb.Append(i == 0 ? "[" : ", [");
+                BuildSimpleAssemblyQualifiedName(arguments[i], sb);
+                sb.Append("]");
+            }
+
+            sb.Append($"], {type.Assembly.GetName().Name}");
+
+            return sb;
+#endif
         }
     }
 }

@@ -9,15 +9,20 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
+using Rebus.Exceptions;
 using Rebus.Messages;
 using Rebus.Transport;
 using Rebus.Transport.InMem;
-using Timer = System.Timers.Timer;
 
 namespace Rebus.Tests.Contracts.Extensions
 {
     public static class TestEx
     {
+        public static double Median(this IEnumerable<double> values)
+        {
+            return values.GetMedianBy(d => d);
+        }
+
         public static TItem GetMedianBy<TItem, TValue>(this IEnumerable<TItem> items, Func<TItem, TValue> valueGetter)
         {
             var list = items.OrderBy(valueGetter).ToList();
@@ -54,16 +59,16 @@ namespace Rebus.Tests.Contracts.Extensions
 
             while (true)
             {
-                using (var context = new DefaultTransactionContextScope())
+                using (var scope = new RebusTransactionScope())
                 {
-                    var nextMessage = await transport.Receive(AmbientTransactionContext.Current, new CancellationToken());
+                    var nextMessage = await transport.Receive(scope.TransactionContext, new CancellationToken());
 
                     if (nextMessage != null)
                     {
                         return nextMessage;
                     }
 
-                    await context.Complete();
+                    await scope.CompleteAsync();
                 }
 
                 await Task.Delay(100);
@@ -133,9 +138,7 @@ namespace Rebus.Tests.Contracts.Extensions
 
         public static IDisposable Interval(this TimeSpan delay, Action action)
         {
-            var timer = new Timer(delay.TotalMilliseconds);
-            timer.Elapsed += (sender, args) => action();
-            timer.Start();
+            var timer = new Timer(obj => action(), null, delay, delay);
             return timer;
         }
 
@@ -196,7 +199,7 @@ namespace Rebus.Tests.Contracts.Extensions
 
             if (!queue.TryDequeue(out next))
             {
-                throw new ApplicationException("Could not dequeue next item!");
+                throw new RebusApplicationException("Could not dequeue next item!");
             }
 
             return next;

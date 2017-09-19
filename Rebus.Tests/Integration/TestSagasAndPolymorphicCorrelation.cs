@@ -5,7 +5,9 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
+using Rebus.Exceptions;
 using Rebus.Handlers;
+using Rebus.Persistence.InMem;
 using Rebus.Retry.Simple;
 using Rebus.Sagas;
 using Rebus.Tests.Contracts;
@@ -26,6 +28,7 @@ namespace Rebus.Tests.Integration
 
             Configure.With(_activator)
                 .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "polycorrrewwllll"))
+                .Sagas(s => s.StoreInMemory())
                 .Options(o =>
                 {
                     o.SetNumberOfWorkers(1);
@@ -74,7 +77,7 @@ namespace Rebus.Tests.Integration
 
             public async Task Handle(SomeMessageThatFails message)
             {
-                throw new ApplicationException("bummer dude");
+                throw new RebusApplicationException("bummer dude");
             }
 
             public async Task Handle(IFailed<SomeMessageThatFails> message)

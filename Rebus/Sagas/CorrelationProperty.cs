@@ -8,7 +8,7 @@ namespace Rebus.Sagas
     /// <summary>
     /// Represents a mapping from a field of an incoming message of a specific type to a specific property on a specific type of saga data
     /// </summary>
-    class CorrelationProperty : ISagaCorrelationProperty
+    public class CorrelationProperty : ISagaCorrelationProperty
     {
         /// <summary>
         /// Defines the types that are allowed to use with saga data properties that are intended for correlation
@@ -34,15 +34,11 @@ namespace Rebus.Sagas
         /// <param name="sagaType">Specifies the saga type (i.e. the handler type) that contains the logic of the saga</param>
         public CorrelationProperty(Type messageType, Func<IMessageContext, object, object> valueFromMessage, Type sagaDataType, string propertyName, Type sagaType)
         {
-            if (messageType == null) throw new ArgumentNullException(nameof(messageType));
-            if (sagaDataType == null) throw new ArgumentNullException(nameof(sagaDataType));
-            if (propertyName == null) throw new ArgumentNullException(nameof(propertyName));
-            if (sagaType == null) throw new ArgumentNullException(nameof(sagaType));
-            PropertyName = propertyName;
-            SagaType = sagaType;
+            PropertyName = propertyName ?? throw new ArgumentNullException(nameof(propertyName));
+            SagaType = sagaType ?? throw new ArgumentNullException(nameof(sagaType));
+            SagaDataType = sagaDataType ?? throw new ArgumentNullException(nameof(sagaDataType));
+            MessageType = messageType ?? throw new ArgumentNullException(nameof(messageType));
             ValueFromMessage = valueFromMessage;
-            SagaDataType = sagaDataType;
-            MessageType = messageType;
             Validate();
         }
 
@@ -94,12 +90,12 @@ namespace Rebus.Sagas
         /// <summary>
         /// The message type that this property can correlate
         /// </summary>
-        public Type MessageType { get; private set; }
+        public Type MessageType { get; }
 
         /// <summary>
         /// The function that will be called with the message instance in order to extract a value that should be used for correlation
         /// </summary>
-        public Func<IMessageContext, object, object> ValueFromMessage { get; private set; }
+        public Func<IMessageContext, object, object> ValueFromMessage { get; }
 
         /// <summary>
         /// Gets the type of the saga's saga data

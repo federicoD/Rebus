@@ -123,10 +123,14 @@ namespace Rebus.Tests.Contracts.Transports
             var input1 = _factory.Create(input1QueueName);
             var input2 = _factory.Create(input2QueueName);
 
+            Console.WriteLine($"Sending message to {input2QueueName}");
+
             await WithContext(async context =>
             {
                 await input1.Send(input2QueueName, MessageWith("hej"), context);
             });
+
+            Console.WriteLine("Receiving message in tx context, which is rolled back");
 
             await WithContext(async context =>
             {
@@ -136,6 +140,8 @@ namespace Rebus.Tests.Contracts.Transports
                 Assert.That(stringBody, Is.EqualTo("hej"));
             }, completeTransaction: false);
 
+            Console.WriteLine("Receiving message in tx context, which is completed");
+
             await WithContext(async context =>
             {
                 var transportMessage = await input2.Receive(context, _cancellationToken);
@@ -143,6 +149,8 @@ namespace Rebus.Tests.Contracts.Transports
 
                 Assert.That(stringBody, Is.EqualTo("hej"));
             });
+
+            Console.WriteLine("Receiving message in tx context, expecting null this time");
 
             await WithContext(async context =>
             {
@@ -186,14 +194,14 @@ namespace Rebus.Tests.Contracts.Transports
 
             while (receivedNulls < 5)
             {
-                using (var transactionContext = new DefaultTransactionContextScope())
+                using (var scope = new RebusTransactionScope())
                 {
-                    var msg = await input.Receive(AmbientTransactionContext.Current, _cancellationToken);
+                    var msg = await input.Receive(scope.TransactionContext, _cancellationToken);
 
                     if (msg != null)
                     {
                         transportMessages.Add(GetStringBody(msg));
-                        await transactionContext.Complete();
+                        await scope.CompleteAsync();
                         continue;
                     }
 
@@ -207,13 +215,13 @@ namespace Rebus.Tests.Contracts.Transports
 
         async Task WithContext(Func<ITransactionContext, Task> contextAction, bool completeTransaction = true)
         {
-            using (var context = new DefaultTransactionContextScope())
+            using (var scope = new RebusTransactionScope())
             {
-                await contextAction(AmbientTransactionContext.Current);
+                await contextAction(scope.TransactionContext);
 
                 if (completeTransaction)
                 {
-                    await context.Complete();
+                    await scope.CompleteAsync();
                 }
             }
         }

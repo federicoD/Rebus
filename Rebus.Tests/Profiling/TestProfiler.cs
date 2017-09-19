@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Messages;
 using Rebus.Pipeline;
+using Rebus.Pipeline.Invokers;
 using Rebus.Profiling;
 using Rebus.Tests.Contracts;
 using Rebus.Transport;
@@ -26,7 +27,7 @@ namespace Rebus.Tests.Profiling
 
             var transportMessage = new TransportMessage(new Dictionary<string, string>(), new byte[0]);
 
-            using (new DefaultTransactionContextScope())
+            using (new RebusTransactionScope())
             {
                 var stepContext = new IncomingStepContext(transportMessage, AmbientTransactionContext.Current);
                 var invoker = new DefaultPipelineInvoker(profiler);

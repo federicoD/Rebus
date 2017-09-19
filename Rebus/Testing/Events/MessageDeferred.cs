@@ -11,9 +11,8 @@ namespace Rebus.Testing.Events
     {
         internal MessageDeferred(TimeSpan delay, object commandMessage, Dictionary<string, string> optionalHeaders)
         {
-            if (commandMessage == null) throw new ArgumentNullException(nameof(commandMessage));
             Delay = delay;
-            CommandMessage = commandMessage;
+            CommandMessage = commandMessage ?? throw new ArgumentNullException(nameof(commandMessage));
             OptionalHeaders = optionalHeaders?.Clone();
         }
 

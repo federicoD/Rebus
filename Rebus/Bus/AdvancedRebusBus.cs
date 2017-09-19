@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Rebus.Bus.Advanced;
 using Rebus.DataBus;
 using Rebus.Extensions;
 using Rebus.Messages;
 using Rebus.Pipeline;
+using Rebus.Routing;
 using Rebus.Time;
 using Rebus.Transport;
 // ReSharper disable ArgumentsStyleLiteral
@@ -127,6 +129,11 @@ namespace Rebus.Bus
                 AsyncHelpers.RunSync(() => _rebusBus.Defer(delay, message, optionalHeaders));
             }
 
+            public void DeferLocal(TimeSpan delay, object message, Dictionary<string, string> optionalHeaders = null)
+            {
+                AsyncHelpers.RunSync(() => _rebusBus.DeferLocal(delay, message, optionalHeaders));
+            }
+
             public void Subscribe<TEvent>()
             {
                 AsyncHelpers.RunSync(() => _rebusBus.Subscribe<TEvent>());
@@ -167,6 +174,42 @@ namespace Rebus.Bus
                 var logicalMessage = CreateMessage(explicitlyRoutedMessage, Operation.Send, optionalHeaders);
 
                 return _rebusBus.InnerSend(new[] { destinationAddress }, logicalMessage);
+            }
+
+            public Task SendRoutingSlip(Itinerary itinerary, object message, Dictionary<string, string> optionalHeaders = null)
+            {
+                var logicalMessage = CreateMessage(message, Operation.Send, optionalHeaders);
+                var destinationAddresses = itinerary.GetDestinationAddresses();
+
+                if (!destinationAddresses.Any())
+                {
+                    throw new ArgumentException($"Cannot send routing slip {message} because the itinerary does not contain any destination addresses. The itinerary must contain at least one destination, otherwise Rebus does not know where to send the message");
+                }
+
+                if (itinerary.MustReturnToSender)
+                {
+                    var ownAddress = _rebusBus._transport.Address;
+                    if (string.IsNullOrWhiteSpace(ownAddress))
+                    {
+                        throw new InvalidOperationException($"The itinerary if the routing slip {message} says to return it to the sender when done, but the sender appears to be a one-way client (and thus is not capable of receiving anything). When one-way clients send routing slips, they must either send them along their way without specifying a return address, or they must explicitly specify a return address by using the itinerary.ReturnTo(...) method");
+                    }
+                    destinationAddresses.Add(ownAddress);
+                }
+                else if (itinerary.HasExplicitlySpecifiedReturnAddress)
+                {
+                    destinationAddresses.Add(itinerary.GetReturnAddress);
+                }
+
+                var first = destinationAddresses.First();
+                var rest = destinationAddresses.Skip(1);
+
+                var value = string.Join(";", rest);
+
+                logicalMessage.Headers[Headers.RoutingSlipItinerary] = value;
+                logicalMessage.Headers[Headers.RoutingSlipTravelogue] = "";
+
+
+                return _rebusBus.InnerSend(new[] { first }, logicalMessage);
             }
         }
 

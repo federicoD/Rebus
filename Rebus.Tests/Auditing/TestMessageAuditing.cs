@@ -8,9 +8,9 @@ using Rebus.Auditing.Messages;
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Messages;
+using Rebus.Persistence.InMem;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
-using Rebus.Tests.Extensions;
 using Rebus.Transport.InMem;
 #pragma warning disable 1998
 
@@ -33,6 +33,7 @@ namespace Rebus.Tests.Auditing
             
             _bus = Configure.With(_adapter)
                 .Transport(t => t.UseInMemoryTransport(_network, "test"))
+                .Subscriptions(s => s.StoreInMemory())
                 .Options(o =>
                 {
                     o.LogPipeline(true);
@@ -44,10 +45,7 @@ namespace Rebus.Tests.Auditing
         [Test]
         public async Task DoesNotCopyFailedMessage()
         {
-            _adapter.Handle<string>(async _ =>
-            {
-                throw new Exception("w00t!!");
-            });
+            _adapter.Handle<string>(async _ => throw new Exception("w00t!!"));
 
             await _bus.SendLocal("woohooo!!!!");
 

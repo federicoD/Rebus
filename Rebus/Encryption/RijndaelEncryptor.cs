@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if NET45
+using System;
 using System.IO;
 using System.Security.Cryptography;
 
@@ -101,3 +102,4 @@ I promise that the suggested key has been generated this instant - if you don't 
         }
     }
 }
+#endif

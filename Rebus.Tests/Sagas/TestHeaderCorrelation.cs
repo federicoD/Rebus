@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Bus;
 using Rebus.Config;
+using Rebus.Persistence.InMem;
 using Rebus.Sagas;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Utilities;
@@ -27,6 +28,7 @@ namespace Rebus.Tests.Sagas
 
             Configure.With(_activator)
                 .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "header-correlation"))
+                .Sagas(s => s.StoreInMemory())
                 .Start();
 
             _bus = _activator.Bus;
@@ -103,6 +105,12 @@ namespace Rebus.Tests.Sagas
 
             public async Task Handle(MyMessage message)
             {
+#if NETSTANDARD1_3
+                await Task.CompletedTask;
+#else
+                await Task.FromResult(false);
+#endif
+
                 _sagaDataCounters.AddOrUpdate(Data.Id, 1, (_, count) => count + 1);
                 _sharedCounter.Decrement();
             }

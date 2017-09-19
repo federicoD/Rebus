@@ -1156,14 +1156,52 @@
 
 * Fix regression that too eagerly validated a saga's correlation properties, leading to suddenly no longer being able to correlate by nested properties
 
-## 4.0.0-b01
+## 3.1.3
+
+* Make data storage test of last read time slightly more tolerant
+
+## 3.1.4
+
+* Fix `GetSimpleAssemblyQualifiedName` extension to handle generic message types better (i.e. make version tolerance work with type parameters too) - thanks [Rzpeg]
+
+## 3.1.5
+
+* Fix unspecified behavior that did not assign a revision number to a deleted saga
+* Add contract test to verify correct behavior of saga persisters
+
+
+## 4.0.0
 
 * Hide some internal types that were never meant to be part of the API
 * Add correlation configuration API to make it easy to correlate headers of incoming messages with saga data
 * Change all logging to have named placeholders (Serilog style) instead of the semantically useless .NET placeholders (logging libraries that have no use for named placeholders can use `AbstractRebusLoggerFactory`'s `RenderString` method)
+* Add experimental expression-based pipeline invoker (not enabled by default)
+* Compile expression-based pipeline with [FastExpressionCompiler](https://github.com/dadhi/FastExpressionCompiler) (not enabled by default) - thanks [dadhi]
+* Add .NET Core support (~~~targeting netstandard 1.6~~~) in addition to the current .NET 4.5 target - thanks [mvandevy]
+* Move JSON serializer into core (still default, but now exposed so it can be customized)
+* Rename transaction scope to `RebusTransactionScope` and make it expose `CompleteAsync()` and `Complete()` methods for completing in an async/sync manner respectively
+* Add optional transport inspector service
+* Extend `ILog` interface with warning signature that accepts an `Exception`
+* Log uncaught exceptions from message handlers by passing real exceptions to the logger
+* Change contract tests to better support "immutable containers" (i.e. containers that cannot have things registered in them after they are built) - thanks [trevorreeves]
+* Set `rbs2-in-reply-to` header on replies containing message ID of the request
+* Lower .NET Core compatible target to netstandard 1.3 - thanks [mirandaasm]
+* Consolidate several header steps into one single `AssignDefaultHeadersStep` for outgoing messages
+* Add routing slips
+* Add `DeferLocal` and make deferral work analogous to sending
+* Add ability to forcibly limit the length of the `rbs2-error-details` header to overcome limitations of the transport in cases where e.g. a long stack trace would make it impossible to forward a failed message to the error queue
 
+## 4.0.1
+
+* Fix exceptions thrown by default persistence implementations
+* Fix exception thrown by Injectionist if a resolver cannot be found
+
+## 4.1.0-b4
+
+* Add optional in-process locking middleware for saga instances
 
 ---
+
 
 [AndreaCuneo]: https://github.com/AndreaCuneo
 [arneeiri]: https://github.com/arneeiri
@@ -1190,10 +1228,12 @@
 [maxx1337]: https://github.com/maxx1337
 [mclausen]: https://github.com/mclausen
 [meyce]: https://github.com/Meyce
+[mirandaasm]: https://github.com/mirandaasm
 [mgayeski]: https://github.com/mgayeski
 [mgibas]: https://github.com/mgibas
 [mortenherman]: https://github.com/mortenherman
 [MrMDavidson]: https://github.com/MrMDavidson
+[mvandevy]: https://github.com/mvandevy
 [NKnusperer]: https://github.com/NKnusperer
 [oguzhaneren]: https://github.com/oguzhaneren
 [PeteProgrammer]: https://github.com/PeteProgrammer
@@ -1206,5 +1246,6 @@
 [tiipe]: https://github.com/tiipe
 [tobiaxor]: https://github.com/tobiaxor
 [torangel]: https://github.com/torangel
+[trevorreeves]: https://github.com/trevorreeves
 [xenoputtss]: https://github.com/xenoputtss
 [zabulus]: https://github.com/zabulus

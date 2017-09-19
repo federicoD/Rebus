@@ -13,31 +13,33 @@ namespace Rebus.Bus
     public interface IBus : IDisposable
     {
         /// <summary>
-        /// Sends the specified message to our own input queue address
+        /// Sends the specified command message to this instance's own input queue, optionally specifying some headers to attach to the message
         /// </summary>
         Task SendLocal(object commandMessage, Dictionary<string, string> optionalHeaders = null);
 
         /// <summary>
-        /// Sends the specified message to a destination that is determined by calling <see cref="IRouter.GetDestinationAddress"/>
+        /// Sends the specified command message to the address mapped as the owner of the message type, optionally specifying some headers to attach to the message
         /// </summary>
         Task Send(object commandMessage, Dictionary<string, string> optionalHeaders = null);
 
         /// <summary>
-        /// Sends the specified reply message to a destination that is determined by looking up the <see cref="Headers.ReturnAddress"/> header of the message currently being handled.
-        /// This method can only be called from within a message handler.
+        /// Defers into the future the specified message, optionally specifying some headers to attach to the message. Unless the <see cref="Headers.DeferredRecipient"/> is specified
+        /// in a header, the bus instance's own input queue address will be set as the return address, which will cause the message to be delivered to that address when the <paramref name="delay"/>
+        /// has elapsed.
         /// </summary>
-        Task Reply(object replyMessage, Dictionary<string, string> optionalHeaders = null);
+        Task DeferLocal(TimeSpan delay, object message, Dictionary<string, string> optionalHeaders = null);
 
         /// <summary>
-        /// Defers the delivery of the message by attaching a <see cref="Headers.DeferredUntil"/> header to it and delivering it to the configured timeout manager endpoint
-        /// (defaults to be ourselves). When the time is right, the deferred message is returned to the address indicated by the <see cref="Headers.ReturnAddress"/> header.
+        /// Defers into the future the specified message, optionally specifying some headers to attach to the message. Unless the <see cref="Headers.DeferredRecipient"/> is specified
+        /// in a header, the endpoint mapping corresponding to the sent message will be set as the return address, which will cause the message to be delivered to that address when the <paramref name="delay"/>
+        /// has elapsed.
         /// </summary>
         Task Defer(TimeSpan delay, object message, Dictionary<string, string> optionalHeaders = null);
 
         /// <summary>
-        /// Gets the API for advanced features of the bus
+        /// Replies back to the endpoint specified as return address on the message currently being handled. Throws an <see cref="InvalidOperationException"/> if called outside of a proper message context.
         /// </summary>
-        IAdvancedApi Advanced { get; }
+        Task Reply(object replyMessage, Dictionary<string, string> optionalHeaders = null);
 
         /// <summary>
         /// Subscribes to the topic defined by the assembly-qualified name of <typeparamref name="TEvent"/>. 
@@ -73,7 +75,7 @@ namespace Rebus.Bus
         /// Unsubscribes from the topic defined by the assembly-qualified name of <typeparamref name="TEvent"/>
         /// </summary>
         Task Unsubscribe<TEvent>();
-        
+
         /// <summary>
         /// Unsubscribes from the topic defined by the assembly-qualified name of <paramref name="eventType"/>
         /// </summary>
@@ -93,5 +95,10 @@ namespace Rebus.Bus
         /// in the configuration
         /// </summary>
         Task Publish(object eventMessage, Dictionary<string, string> optionalHeaders = null);
+
+        /// <summary>
+        /// Gets the API for advanced features of the bus
+        /// </summary>
+        IAdvancedApi Advanced { get; }
     }
 }

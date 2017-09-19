@@ -8,12 +8,12 @@ using Rebus.Activation;
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Logging;
+using Rebus.Persistence.InMem;
 using Rebus.Pipeline;
 using Rebus.Sagas;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Tests.Contracts.Utilities;
-using Rebus.Tests.Extensions;
 using Rebus.Transport.InMem;
 #pragma warning disable 1998
 
@@ -40,6 +40,8 @@ namespace Rebus.Tests.Sagas
                     o.SetNumberOfWorkers(10);
                     o.SetMaxParallelism(10);
                 })
+                .Sagas(s => s.StoreInMemory())
+                .Timeouts(t => t.StoreInMemory())
                 .Start();
         }
 

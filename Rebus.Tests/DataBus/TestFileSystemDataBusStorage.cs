@@ -21,7 +21,7 @@ namespace Rebus.Tests.DataBus
 
         protected override void SetUp()
         {
-            var directoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "databustest");
+            var directoryPath = Path.Combine(TestConfig.DirectoryPath(), "databustest");
 
             DeleteHelper.DeleteDirectory(directoryPath);
 

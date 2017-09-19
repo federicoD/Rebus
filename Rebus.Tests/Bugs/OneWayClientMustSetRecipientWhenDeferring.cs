@@ -7,9 +7,9 @@ using Rebus.Activation;
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Messages;
+using Rebus.Persistence.InMem;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
-using Rebus.Tests.Extensions;
 using Rebus.Timeouts;
 using Rebus.Transport.InMem;
 #pragma warning disable 1998
@@ -32,6 +32,7 @@ namespace Rebus.Tests.Bugs
 
             Configure.With(Using(new BuiltinHandlerActivator()))
                 .Transport(t => t.UseInMemoryTransport(_network, TimeoutsQueueName))
+                .Timeouts(t => t.StoreInMemory())
                 .Start();
 
             _destination = new BuiltinHandlerActivator();
@@ -50,7 +51,7 @@ namespace Rebus.Tests.Bugs
         {
             var aggregateException = Assert.Throws<AggregateException>(() =>
             {
-                _oneWayClient.Defer(TimeSpan.FromSeconds(1), "hej med dig min ven!!").Wait();
+                _oneWayClient.DeferLocal(TimeSpan.FromSeconds(1), "hej med dig min ven!!").Wait();
             });
 
             var baseException = aggregateException.GetBaseException();
@@ -75,7 +76,7 @@ namespace Rebus.Tests.Bugs
                 { Headers.DeferredRecipient, DestinationQueueName }
             };
 
-            await _oneWayClient.Defer(TimeSpan.FromSeconds(1), "hej med dig min ven!!", headers);
+            await _oneWayClient.DeferLocal(TimeSpan.FromSeconds(1), "hej med dig min ven!!", headers);
 
             gotTheMessage.WaitOrDie(TimeSpan.FromSeconds(4));
         }

@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Bus;
 using Rebus.Config;
+using Rebus.Exceptions;
 using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.Messages;
@@ -21,7 +22,7 @@ namespace Rebus.Tests.Integration
     [TestFixture]
     public class TestRetry : FixtureBase
     {
-        static readonly string InputQueueName = TestConfig.GetName($"test.rebus2.retries.input@{Environment.MachineName}");
+        static readonly string InputQueueName = TestConfig.GetName($"test.rebus2.retries.input@{GetMachineName()}");
         static readonly string ErrorQueueName = TestConfig.GetName("rebus2.error");
 
         BuiltinHandlerActivator _handlerActivator;
@@ -56,7 +57,7 @@ namespace Rebus.Tests.Integration
             _handlerActivator.Handle<string>(async _ =>
             {
                 Interlocked.Increment(ref attemptedDeliveries);
-                throw new ApplicationException("omgwtf!");
+                throw new RebusApplicationException("omgwtf!");
             });
 
             await _bus.Send("hej");
@@ -80,7 +81,7 @@ namespace Rebus.Tests.Integration
             _handlerActivator.Handle<string>(async _ =>
             {
                 Interlocked.Increment(ref attemptedDeliveries);
-                throw new ApplicationException("omgwtf!");
+                throw new RebusApplicationException("omgwtf!");
             });
 
             await _bus.Send("hej");
@@ -90,6 +91,15 @@ namespace Rebus.Tests.Integration
             var expectedNumberOfAttemptedDeliveries = numberOfRetries;
 
             Assert.That(attemptedDeliveries, Is.EqualTo(expectedNumberOfAttemptedDeliveries));
+        }
+
+        private static string GetMachineName()
+        {
+#if NETSTANDARD1_3
+            return Environment.GetEnvironmentVariable("COMPUTERNAME") ?? Environment.GetEnvironmentVariable("HOSTNAME");
+#else
+            return Environment.MachineName;
+#endif
         }
     }
 }

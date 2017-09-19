@@ -2,8 +2,10 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Rebus.Messages;
+// ReSharper disable ForCanBeConvertedToForeach
 
 namespace Rebus.Pipeline.Send
 {
@@ -16,7 +18,7 @@ namespace Rebus.Pipeline.Send
 Headers already on the message will not be overwritten.")]
     public class AutoHeadersOutgoingStep : IOutgoingStep
     {
-        readonly ConcurrentDictionary<Type, IEnumerable<HeaderAttribute>> _headersToAssign = new ConcurrentDictionary<Type, IEnumerable<HeaderAttribute>>();
+        readonly ConcurrentDictionary<Type, HeaderAttribute[]> _headersToAssign = new ConcurrentDictionary<Type, HeaderAttribute[]>();
 
         /// <summary>
         /// Carries out the auto-header logic
@@ -31,12 +33,15 @@ Headers already on the message will not be overwritten.")]
             var messageType = body.GetType();
 
             var headersToAssign = _headersToAssign.GetOrAdd(messageType, type => messageType
+                .GetTypeInfo()
                 .GetCustomAttributes(typeof (HeaderAttribute), true)
                 .OfType<HeaderAttribute>()
-                .ToList());
+                .ToArray());
 
-            foreach (var autoHeader in headersToAssign)
+            for (var index = 0; index < headersToAssign.Length; index++)
             {
+                var autoHeader = headersToAssign[index];
+
                 if (headers.ContainsKey(autoHeader.Key)) continue;
 
                 headers[autoHeader.Key] = autoHeader.Value;

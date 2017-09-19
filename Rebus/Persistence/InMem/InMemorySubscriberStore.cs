@@ -9,12 +9,10 @@ namespace Rebus.Persistence.InMem
     /// </summary>
     public class InMemorySubscriberStore
     {
-        static readonly StringComparer StringComparer = StringComparer.InvariantCultureIgnoreCase;
-
+        static readonly StringComparer StringComparer = StringComparer.OrdinalIgnoreCase;
         static readonly string[] NoSubscribers = new string[0];
 
-        readonly ConcurrentDictionary<string, ConcurrentDictionary<string, object>> _subscribers
-            = new ConcurrentDictionary<string, ConcurrentDictionary<string, object>>(StringComparer);
+        readonly ConcurrentDictionary<string, ConcurrentDictionary<string, object>> _subscribers = new ConcurrentDictionary<string, ConcurrentDictionary<string, object>>(StringComparer);
 
         /// <summary>
         /// Gets the subscribers for the current topic

@@ -43,9 +43,9 @@ namespace Rebus.Tests.Integration
         {
             _activator.Handle<string>(async str =>
             {
-                Console.WriteLine("Throwing AccessViolationException");
+                Console.WriteLine("Throwing UnauthorizedAccessException");
 
-                throw new AccessViolationException("don't do that");
+                throw new UnauthorizedAccessException("don't do that");
             });
 
             _activator.Bus.SendLocal("hej 2").Wait();
@@ -61,7 +61,7 @@ namespace Rebus.Tests.Integration
         {
             public readonly ConcurrentQueue<TransportMessage> FailedMessages = new ConcurrentQueue<TransportMessage>();
 
-            public async Task HandlePoisonMessage(TransportMessage transportMessage, ITransactionContext transactionContext, string errorDescription)
+            public async Task HandlePoisonMessage(TransportMessage transportMessage, ITransactionContext transactionContext, Exception exception)
             {
                 FailedMessages.Enqueue(transportMessage);
             }

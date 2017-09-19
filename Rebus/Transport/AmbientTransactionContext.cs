@@ -1,5 +1,9 @@
 using System;
+#if NET45
 using System.Runtime.Remoting.Messaging;
+#else
+using System.Threading;
+#endif
 
 namespace Rebus.Transport
 {
@@ -9,6 +13,7 @@ namespace Rebus.Transport
     /// </summary>
     public static class AmbientTransactionContext
     {
+#if NET45
         const string TransactionContextKey = "rebus2-current-transaction-context";
 
         /// <summary>
@@ -20,6 +25,19 @@ namespace Rebus.Transport
         /// Gets the default set function (which is using <see cref="CallContext.LogicalGetData"/> to do its thing)
         /// </summary>
         public static readonly Func<ITransactionContext> DefaultGetter = () => CallContext.LogicalGetData(TransactionContextKey) as ITransactionContext;
+#else
+        static readonly AsyncLocal<ITransactionContext> AsyncLocalTxContext = new AsyncLocal<ITransactionContext>();
+      
+        /// <summary>
+        /// Gets the default set function (which is using <see cref="System.Threading.AsyncLocal{T}"/> to do its thing)
+        /// </summary>
+        public static readonly Action<ITransactionContext> DefaultSetter = context => AsyncLocalTxContext.Value = context;
+
+        /// <summary>
+        /// Gets the default set function (which is using <see cref="System.Threading.AsyncLocal{T}"/> to do its thing)
+        /// </summary>
+        public static readonly Func<ITransactionContext> DefaultGetter = () => AsyncLocalTxContext.Value;
+#endif
 
         static Action<ITransactionContext> _setCurrent = DefaultSetter;
         static Func<ITransactionContext> _getCurrent = DefaultGetter;
@@ -32,7 +50,7 @@ namespace Rebus.Transport
 
         /// <summary>
         /// Sets the current transaction context. Please note that in most cases, it is not necessary to set the context using this method
-        /// - when using <see cref="DefaultTransactionContextScope"/> and <see cref="DefaultSyncTransactionContextScope"/> the ambient transaction context
+        /// - when using <see cref="RebusTransactionScope"/> and <see cref="RebusTransactionScope"/> the ambient transaction context
         /// is automatically set/unset when the object is created/disposed.
         /// </summary>
         public static void SetCurrent(ITransactionContext transactionContext)
@@ -46,11 +64,8 @@ namespace Rebus.Transport
         /// </summary>
         public static void SetAccessors(Action<ITransactionContext> setter, Func<ITransactionContext> getter)
         {
-            if (setter == null) throw new ArgumentNullException(nameof(setter));
-            if (getter == null) throw new ArgumentNullException(nameof(getter));
-
-            _setCurrent = setter;
-            _getCurrent = getter;
+            _setCurrent = setter ?? throw new ArgumentNullException(nameof(setter));
+            _getCurrent = getter ?? throw new ArgumentNullException(nameof(getter));
         }
     }
 }

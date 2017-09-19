@@ -8,6 +8,7 @@ using FluentAssertions;
 using NUnit.Framework;
 using Rebus.Compression;
 using Rebus.DataBus;
+using Rebus.Extensions;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Time;
 
@@ -55,7 +56,12 @@ namespace Rebus.Tests.Contracts.DataBus
             var metadata = await _storage.ReadMetadata(knownId);
 
             Assert.That(metadata.ContainsKey(MetadataKeys.ReadTime), Is.True);
-            Assert.That(metadata[MetadataKeys.ReadTime], Is.EqualTo(justSomeTime.ToString("O")));
+
+            var readTimeMetadata = metadata[MetadataKeys.ReadTime];
+            var readTime = DateTimeOffset.Parse(readTimeMetadata);
+
+            Assert.That(readTime, Is.EqualTo(justSomeTime),
+                $"Expected that the '{MetadataKeys.ReadTime}' metadata value '{readTimeMetadata}' would equal {justSomeTime} when passed to DateTimeOffset.Parse(...)");
         }
 
         [Test]
@@ -115,13 +121,13 @@ namespace Rebus.Tests.Contracts.DataBus
             // special case: zipped data has different size (and is actually bigger in this case :))
             if (_storage is ZippingDataBusStorageDecorator)
             {
-                Assert.That(readMetadata[MetadataKeys.Length], Is.EqualTo("23"));
+                Assert.That(readMetadata.GetValue(MetadataKeys.Length), Is.EqualTo("23"));
             }
             else
             {
-                Assert.That(readMetadata[MetadataKeys.Length], Is.EqualTo("3"));
+                Assert.That(readMetadata.GetValue(MetadataKeys.Length), Is.EqualTo("3"));
             }
-            Assert.That(readMetadata[MetadataKeys.SaveTime], Is.EqualTo(fakeTime.ToString("O")));
+            Assert.That(readMetadata.GetValue(MetadataKeys.SaveTime), Is.EqualTo(fakeTime.ToString("O")));
         }
 
         [Test]

@@ -8,12 +8,14 @@ using Rebus.Messages;
 using Rebus.Pipeline;
 using Rebus.Threading;
 using Rebus.Transport;
+// ReSharper disable PrivateFieldCanBeConvertedToLocalVariable
 
 namespace Rebus.Workers.ThreadPoolBased
 {
     class ThreadPoolWorker : IWorker
     {
         readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        readonly ManualResetEvent _workerShutDown = new ManualResetEvent(false);
         readonly ITransport _transport;
         readonly IPipelineInvoker _pipelineInvoker;
         readonly ParallelOperationsManager _parallelOperationsManager;
@@ -64,6 +66,8 @@ namespace Rebus.Workers.ThreadPoolBased
             }
 
             _log.Debug("Worker {workerName} stopped", Name);
+
+            _workerShutDown.Set();
         }
 
         void TryReceiveNextMessage(CancellationToken token)
@@ -164,11 +168,11 @@ namespace Rebus.Workers.ThreadPoolBased
                     _log.Error(exception, "An error occurred when attempting to complete the transaction context");
                 }
             }
-            catch (ThreadAbortException exception)
+            catch (OperationCanceledException exception)
             {
                 context.Abort();
 
-                _log.Error(exception, "Worker was killed while handling message {messageLabel}", transportMessage.GetMessageLabel());
+                _log.Error(exception, "Worker was aborted while handling message {messageLabel}", transportMessage.GetMessageLabel());
             }
             catch (Exception exception)
             {
@@ -191,11 +195,9 @@ namespace Rebus.Workers.ThreadPoolBased
         {
             Stop();
 
-            if (!_workerThread.Join(_options.WorkerShutdownTimeout))
+            if (!_workerShutDown.WaitOne(_options.WorkerShutdownTimeout))
             {
                 _log.Warn("The {workerName} worker did not shut down within {shutdownTimeoutSeconds} seconds!", _options.WorkerShutdownTimeout.TotalSeconds);
-
-                _workerThread.Abort();
             }
         }
     }

@@ -5,13 +5,15 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
+using Rebus.Exceptions;
 using Rebus.Logging;
+using Rebus.Persistence.InMem;
 using Rebus.Routing.Exceptions;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Tests.Contracts.Utilities;
-using Rebus.Tests.Extensions;
 using Rebus.Transport.InMem;
+// ReSharper disable ArgumentsStyleLiteral
 #pragma warning disable 1998
 
 namespace Rebus.Tests.Integration
@@ -33,7 +35,7 @@ namespace Rebus.Tests.Integration
                 .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "customize exceptions"))
                 .Routing(r =>
                 {
-                    r.ForwardOnException<ApplicationException>("error", LogLevel.Error);
+                    r.ForwardOnException<RebusApplicationException>("error", LogLevel.Error);
 
                     r.ForwardOnException<CustomException>("error", LogLevel.Error, e =>
                         {
@@ -42,6 +44,7 @@ namespace Rebus.Tests.Integration
                         });
                 })
                 .Options(o => o.LogPipeline(verbose: true))
+                .Timeouts(t => t.StoreInMemory())
                 .Start();
         }
 
@@ -50,7 +53,7 @@ namespace Rebus.Tests.Integration
         {
             _activator.Handle<ShouldFail>(async msg =>
             {
-                throw new ApplicationException("oh no!!!!");
+                throw new RebusApplicationException("oh no!!!!");
             });
 
             await _activator.Bus.SendLocal(new ShouldFail());
@@ -75,7 +78,7 @@ namespace Rebus.Tests.Integration
             {
                 Interlocked.Increment(ref deliveryAttempts);
 
-                throw new ApplicationException("oh noooo!!!!");
+                throw new RebusApplicationException("oh noooo!!!!");
             });
 
             await _activator.Bus.SendLocal(new ShouldFail());

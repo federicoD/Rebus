@@ -41,10 +41,12 @@ namespace Rebus.Tests.Synchronous
                 bus.SendLocal("ey det virker");
             });
 
+#if NET45
             thread.SetApartmentState(ApartmentState.STA);
+#endif
             thread.Start();
 
-            Assert.That(thread.Join(TimeSpan.FromSeconds(1)), Is.True, "thread did not finish within timeout");
+            Assert.That(thread.Join(1000), Is.True, "thread did not finish within timeout");
 
             messageWasProperlyHandled.WaitOrDie(timeout: TimeSpan.FromSeconds(2));
         }
@@ -58,7 +60,7 @@ namespace Rebus.Tests.Synchronous
 
             _activator.Handle<string>(async msg => receivedMessages.Enqueue(msg));
 
-            using (var context = new DefaultSyncTransactionContextScope())
+            using (var context = new RebusTransactionScope())
             {
                 bus.SendLocal("hej med dig min ven");
                 bus.SendLocal("her er endnu en besked");
